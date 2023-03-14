@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vue ChatGPT</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+
+  <style>
+    [v-cloak]>* {
+      display: none
+    }
+
+    [v-cloak]::before {
+      content: ". . ."
+    }
+
+    .prompt {
+      background-color: #ecffec;
+      padding: 0.3em 1em 0.3em;
+      margin-bottom: 2px;
+      border-radius: 1em 0 1em 1em;
+    }
+
+    .response {
+      background-color: white;
+      padding: 0.3em 1em 0.3em;
+      margin-bottom: 2px;
+      border-radius: 0 1em 1em 1em;
+    }
+
+    .history {
+      background-color: #cdf;
+    }
+
+    .result-message.success {
+      background-color: rgb(136, 255, 146);
+    }
+
+    .result-message.error {
+      background-color: rgb(255, 172, 172);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <nav class="navbar navbar-expand-lg bg-dark text-light">
+      <div class="container-fluid">
+        <a class="navbar-brand text-light" href="#">Vue ChatGPT</a>
+        <button class="btn btn-light" @click="switchShowConfig">Configuración</button>
+      </div>
+    </nav>
+
+    <div class="container" v-show="showConfig">
+      <div class="config shadow p-2 mb-4">
+        <h3>Configuración</h3>
+        <div class="input-group">
+          <input :type="showApiKey ? 'text' : 'password'" class="form-control" placeholder="apiKey" v-model="apiKey"
+            ref="apiKey">
+          <button class="btn btn-light btn-sm" @click="switchShowApiKey">{{ showApiKey ? 'Ocultar' : 'Ver' }}</button>
+        </div>
+        <div class="row my-1">
+          <div class="col">
+            <!-- <input type="text" class="form-control" placeholder="Modelo" v-model="model"> -->
+          </div>
+          <div class="col">
+            <!-- <input type="text" class="form-control" placeholder="Max Tokens" v-model="max_tokens"> -->
+          </div>
+        </div>
+        <!-- <div class="form-check">
+          <input class="form-check-input" type="checkbox" v-model="holdHistory" id="saveHistory">
+          <label class="form-check-label" for="saveHistory">
+            Mantener historial en la memoria del navegador
+          </label>
+        </div> -->
+        <button class="btn btn-primary btn-sm mt-2" @click="setConfig">Guardar</button>
+        <button class="btn btn-light btn-sm mt-2" @click="switchShowConfig">Cerrar</button>
+      </div>
+    </div>
+
+    <div class="">
+      <div class="history p-2" v-if="openai && (holdHistory || history.length > 0)">
+        <!-- <button class="btn btn-light btn-sm mb-2" @click="getHistory" v-if="holdHistory">Recargar</button> -->
+        <button class="btn btn-light btn-sm mb-2 mx-2" @click="clearHistory" v-if="history.length > 0">Limpiar</button>
+
+        <ul class="list-unstyled">
+          <li v-for="item of history">
+            <div class="prompt">{{ item.prompt }}</div>
+            <div class="response" v-html="item.response"></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div v-show="openai" class="mt-2">
+        <textarea class="form-control" placeholder="Tu pregunta" v-model="prompt" ref="prompt"></textarea>
+        <button type="button" class="btn btn-primary form-control" :class="{'btn-light': disableSendButton}"
+          @click="sendPrompt" :disabled="disableSendButton">Enviar</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="result-message font-monospace p-2 my-2" :class="[resultClass]" v-if="resultMessage">{{ resultMessage
+        }}</div>
+    </div>
+
+    <div class="footer text-center">
+      <a href="https://github.com/akobashikawa/express-chatgpt" target="_blank">@GitHub</a>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
+
+  <script>
+    axios.defaults.headers.post['Accept'] = 'application/json, text/plain, */*';
+    axios.defaults.headers.post['Content-Type'] = 'application/json; charset=UTF-8';
+
+    const converter = new showdown.Converter();
+
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          openai: false,
+          apiKey: '',
+          // model: 'text-davinci-003',
+          model: 'gpt-3.5-turbo',
+          // max_tokens: 50,
+          prompt: 'Hola',
+          history: [],
+          // holdHistory: false,
+          resultMessage: null,
+          resultClass: null,
+          showConfig: true,
+          showApiKey: false,
+          disableSendButton: false,
+        }
+      },
+
+      methods: {
+        getQueryParam(name) {
+          const paramsString = window.location.href.split("?");
+          const searchParams = new URLSearchParams(paramsString[1]);
+          return searchParams.has(name) ? searchParams.get(name) : false;
+        },
+
+        switchShowConfig() {
+          this.showConfig = !this.showConfig;
+        },
+
+        switchShowApiKey() {
+          this.showApiKey = !this.showApiKey;
+        },
+
+        setResultMessage(message) {
+          this.resultMessage = message;
+          this.resultClass = 'success';
+        },
+
+        setResultError(error) {
+          console.log(error);
+          const message = error.response && error.response.data || error;
+          const status = error.response && error.response.status || 401;
+          this.resultMessage = message;
+          switch (status) {
+            case 200:
+              this.resultClass = 'bg-success';
+              break;
+            case 401:
+              this.resultClass = 'bg-warning';
+              break;
+            case 500:
+              this.resultClass = 'error';
+              break;
+            default:
+              this.resultClass = 'bg-info';
+              break;
+          }
+        },
+
+        highlightCode() {
+          setTimeout(() => {
+            document.querySelectorAll('code').forEach(el => {
+              hljs.highlightElement(el);
+            });
+          }, 500);
+        },
+
+        // --- //
+
+        async setConfig() {
+          const body = {
+            apikey: this.apiKey,
+            model: this.model,
+            // max_tokens: this.max_tokens,
+            // holdHistory: this.holdHistory,
+          };
+
+          try {
+            const configString = JSON.stringify(body);
+            localStorage.setItem('vuechatgptconfig', configString);
+            this.setAuthorization(this.apiKey);
+            this.openai = true;
+            const message = {
+              message: 'apiKey actualizado',
+              model: this.model,
+            };
+            this.setResultMessage(message);
+            setTimeout(() => {
+              this.$refs.prompt.focus();
+            }, 500);
+          } catch (error) {
+            this.setResultError(error);
+          }
+        },
+
+        async sendPrompt() {
+          this.disableSendButton = true;
+
+          const url = 'https://api.openai.com/v1/chat/completions';
+          const body = {
+              "model": this.model,
+              "messages": [{"role": "user", "content": this.prompt}],
+              "temperature": 0.7
+          };
+          // const headers = {
+          //     'Content-Type': 'application/json',
+          //     'Authorization': `Bearer ${this.apiKey}`
+          // };
+
+          try {
+            const completionResponse = await axios.post(url, body);
+            const response = completionResponse.data.choices[0].message.content;
+            const responseHTML = converter.makeHtml(response);
+            const newItem = {
+              prompt: this.prompt,
+              response: responseHTML,
+            };
+            this.history.push(newItem);
+            this.prompt = '';
+            this.$refs.prompt.focus();
+
+            this.disableSendButton = false;
+            this.highlightCode();
+          } catch (error) {
+            this.setResultError(error);
+            this.disableSendButton = false;
+          }
+        },
+
+        // async getHistory() {
+        //   this.error = null;
+
+        //   const url = '/api/history';
+
+        //   try {
+        //     const response = await axios.get(url);
+        //     this.history = response.data;
+        //     this.setResultMessage('Historial actualizado');
+        //   } catch (error) {
+        //     this.setResultError(error);
+        //   }
+        // },
+
+        async clearHistory() {
+          this.error = null;
+
+          // const url = '/api/history';
+
+          try {
+            // const response = await axios.delete(url);
+            this.history = [];
+            this.setResultMessage('Historial limpiado');
+          } catch (error) {
+            this.setResultError(error);
+          }
+        },
+
+        setAuthorization(apiKey) {
+          const authorization = `Bearer ${apiKey}`;
+          axios.defaults.headers.common['Authorization'] = authorization;
+        },
+
+      },
+
+      mounted() {
+        const apiKeyInUrl = this.getQueryParam('apiKey');
+        if (apiKeyInUrl) {
+          this.apiKey = apiKeyInUrl;
+          this.setAuthorization(this.apiKey);
+        }
+      }
+    }).mount('#app')
+  </script>
+
+</body>
+
+</html>
