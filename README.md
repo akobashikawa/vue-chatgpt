@@ -2,6 +2,8 @@
 
 Simple interface para probar ChatGPT.
 
+![image](https://user-images.githubusercontent.com/108734/224945519-7cc1e3aa-5146-4f8a-8b2e-d46a9a2bb5ae.png)
+
 ## Tecnología
 
 - VueJS
