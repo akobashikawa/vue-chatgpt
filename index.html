@@ -62,11 +62,17 @@
             ref="apiKey">
           <button class="btn btn-light btn-sm" @click="switchShowApiKey">{{ showApiKey ? 'Ocultar' : 'Ver' }}</button>
         </div>
-        <div class="row my-1" v-if="false">
+        <div class="row my-1">
           <div class="col">
-            <input type="text" class="form-control" placeholder="Modelo" v-model="model">
+            <div class="input-group">
+              <select class="form-select" v-model="model">
+                <option value="">--- Modelo:</option>
+                <option :value="model" v-for="model of models">{{ model }}</option>
+              </select>
+              <input type="text" class="form-control" placeholder="Modelo" v-model="model" v-if="model==''">
+            </div>
           </div>
-          <div class="col">
+          <div class="col" v-if="false">
             <input type="text" class="form-control" placeholder="Max Tokens" v-model="max_tokens">
           </div>
         </div>
@@ -89,8 +95,25 @@
         <ul class="list-unstyled">
           <li v-for="item of history">
             <div class="prompt">{{ item.prompt }}</div>
-            <div class="response" v-html="item.responseHTML"></div>
-            <div class="response">{{ response }}</div>
+            <div class="response">
+              <p class="row placeholder-glow" v-if="!item.response">
+                <span class="placeholder col-1"></span>&nbsp;
+                <span class="placeholder col-2"></span>&nbsp;
+                <span class="placeholder col-3"></span>&nbsp;
+                <span class="placeholder col-2"></span>&nbsp;
+                <span class="placeholder col-1"></span>&nbsp;
+              </p>
+              <div class="response-html" v-html="item.responseHtml" v-if="item.showHtml"></div>
+              <div class="response-txt" v-if="!item.showHtml">{{ item.response }}</div>
+              <div class="actions text-end" v-if="item.response">
+                <button class="btn btn-light btn-sm text-black-50"
+                  @click="copyToClipboard(item.response)">Copiar</button>
+                <button class="btn btn-light btn-sm text-black-50" v-if="item.showHtml"
+                  @click="item.showHtml=!item.showHtml">Ver como texto</button>
+                <button class="btn btn-light btn-sm text-black-50" v-if="!item.showHtml"
+                  @click="item.showHtml=!item.showHtml">Ver como HTML</button>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -111,6 +134,19 @@
 
     <div class="footer text-center">
       <a href="https://github.com/akobashikawa/vue-chatgpt" target="_blank">@GitHub</a>
+    </div>
+
+    <div class="toast-container bottom-0 start-50 translate-middle-x">
+      <div id="myToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            {{ toastText }}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+            aria-label="Close"></button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -139,17 +175,27 @@
         return {
           openai: false,
           apiKey: '',
+          models: ['gpt-3.5-turbo', 'text-davinci-003'],
           // model: 'text-davinci-003',
           model: 'gpt-3.5-turbo',
           // max_tokens: 50,
           prompt: 'Hola',
-          history: [],
+          history: [
+            // {
+            //   prompt: 'Hola',
+            //   response: "\n\n¡Hola! ¿En qué puedo ayudarte hoy?",
+            //   responseHtml: "<p>¡Hola! ¿En qué puedo ayudarte hoy?</p>",
+            //   showHtml: true,
+            // }
+        ],
           // holdHistory: false,
           resultMessage: null,
           resultClass: null,
           showConfig: true,
           showApiKey: false,
           disableSendButton: false,
+          myToast: null,
+          toastText: '',
         }
       },
 
@@ -233,11 +279,20 @@
         async sendPrompt() {
           this.disableSendButton = true;
 
+          const newItem = {
+            prompt: this.prompt,
+            response: '',
+            responseHtml: '',
+            showHtml: true,
+          };
+
+          this.history.push(newItem);
+
           const url = 'https://api.openai.com/v1/chat/completions';
           const body = {
-              "model": this.model,
-              "messages": [{"role": "user", "content": this.prompt}],
-              "temperature": 0.7
+            "model": this.model,
+            "messages": [{ "role": "user", "content": this.prompt }],
+            "temperature": 0.7
           };
           // const headers = {
           //     'Content-Type': 'application/json',
@@ -247,13 +302,18 @@
           try {
             const completionResponse = await axios.post(url, body);
             const response = completionResponse.data.choices[0].message.content;
-            const responseHTML = converter.makeHtml(response);
-            const newItem = {
-              prompt: this.prompt,
-              response: response,
-              responseHTML: responseHTML,
-            };
-            this.history.push(newItem);
+            const responseHtml = converter.makeHtml(response);
+            // const newItem = {
+            //   prompt: this.prompt,
+            //   response: response,
+            //   responseHtml: responseHtml,
+            //   showHtml: true,
+            // };
+            // this.history.push(newItem);
+
+            newItem.response = response;
+            newItem.responseHtml = responseHtml;
+
             this.prompt = '';
             this.$refs.prompt.focus();
 
@@ -298,14 +358,32 @@
           axios.defaults.headers.common['Authorization'] = authorization;
         },
 
+        async copyToClipboard(text) {
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('Texto copiado');
+            console.log('Content copied to clipboard');
+          } catch (err) {
+            console.error('Fallo al copiar al clipboard: ', err);
+          }
+        },
+
+        showToast(text) {
+          this.toastText = text;
+          this.myToast.show();
+        }
+
       },
 
       mounted() {
+        this.myToast = new bootstrap.Toast('#myToast');
+
         const apiKeyInUrl = this.getQueryParam('apiKey');
         if (apiKeyInUrl) {
           this.apiKey = apiKeyInUrl;
           this.setAuthorization(this.apiKey);
         }
+
       }
     }).mount('#app')
   </script>
