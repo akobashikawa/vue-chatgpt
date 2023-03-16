@@ -6,7 +6,14 @@ Simple interface para probar ChatGPT.
 
 ## Tecnología
 
+- OpenAI
 - VueJS
+- Bootstrap
+- Axios
+- Showdown
+    - Transforma el markdown de la respuesta en HTML
+- Highlight
+    - Ilumina la sintaxis de los bloques de código
 
 Puedes encontrar una versión con ExpressJS en el backend: https://github.com/akobashikawa/express-chatgpt
 
