@@ -62,34 +62,35 @@
             ref="apiKey">
           <button class="btn btn-light btn-sm" @click="switchShowApiKey">{{ showApiKey ? 'Ocultar' : 'Ver' }}</button>
         </div>
-        <div class="row my-1">
+        <div class="row my-1" v-if="false">
           <div class="col">
-            <!-- <input type="text" class="form-control" placeholder="Modelo" v-model="model"> -->
+            <input type="text" class="form-control" placeholder="Modelo" v-model="model">
           </div>
           <div class="col">
-            <!-- <input type="text" class="form-control" placeholder="Max Tokens" v-model="max_tokens"> -->
+            <input type="text" class="form-control" placeholder="Max Tokens" v-model="max_tokens">
           </div>
         </div>
-        <!-- <div class="form-check">
+        <div class="form-check" v-if="false">
           <input class="form-check-input" type="checkbox" v-model="holdHistory" id="saveHistory">
           <label class="form-check-label" for="saveHistory">
             Mantener historial en la memoria del navegador
           </label>
-        </div> -->
+        </div>
         <button class="btn btn-primary btn-sm mt-2" @click="setConfig">Guardar</button>
         <button class="btn btn-light btn-sm mt-2" @click="switchShowConfig">Cerrar</button>
       </div>
     </div>
 
     <div class="">
-      <div class="history p-2" v-if="openai && (holdHistory || history.length > 0)">
-        <!-- <button class="btn btn-light btn-sm mb-2" @click="getHistory" v-if="holdHistory">Recargar</button> -->
+      <div class="history p-2" v-if="openai && (history.length > 0)">
+        <button class="btn btn-light btn-sm mb-2" @click="getHistory" v-if="false && holdHistory">Recargar</button>
         <button class="btn btn-light btn-sm mb-2 mx-2" @click="clearHistory" v-if="history.length > 0">Limpiar</button>
 
         <ul class="list-unstyled">
           <li v-for="item of history">
             <div class="prompt">{{ item.prompt }}</div>
-            <div class="response" v-html="item.response"></div>
+            <div class="response" v-html="item.responseHTML"></div>
+            <div class="response">{{ response }}</div>
           </li>
         </ul>
       </div>
@@ -249,7 +250,8 @@
             const responseHTML = converter.makeHtml(response);
             const newItem = {
               prompt: this.prompt,
-              response: responseHTML,
+              response: response,
+              responseHTML: responseHTML,
             };
             this.history.push(newItem);
             this.prompt = '';
