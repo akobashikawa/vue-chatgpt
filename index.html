@@ -51,7 +51,7 @@
       <div class="container-fluid">
         <a class="navbar-brand text-light" href="#">Vue ChatGPT</a>
         <img src="./img/chatgpt-icon.svg" alt="">
-        <button class="btn btn-light" @click="switchShowConfig">Configuración</button>
+        <button class="btn btn-outline-light" @click="switchShowConfig">Configuración</button>
       </div>
     </nav>
 
@@ -266,6 +266,7 @@
               message: 'apiKey actualizado',
               model: this.model,
             };
+            this.switchShowConfig();
             // this.setResultMessage(message);
             this.showToast(message);
             setTimeout(() => {
