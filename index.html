@@ -50,6 +50,7 @@
     <nav class="navbar navbar-expand-lg bg-dark text-light">
       <div class="container-fluid">
         <a class="navbar-brand text-light" href="#">Vue ChatGPT</a>
+        <img src="./img/chatgpt-icon.svg" alt="">
         <button class="btn btn-light" @click="switchShowConfig">Configuración</button>
       </div>
     </nav>
@@ -97,15 +98,13 @@
             <div class="prompt">{{ item.prompt }}</div>
             <div class="response">
               <p class="row placeholder-glow" v-if="!item.response">
-                <span class="placeholder col-1"></span>&nbsp;
-                <span class="placeholder col-2"></span>&nbsp;
-                <span class="placeholder col-3"></span>&nbsp;
-                <span class="placeholder col-2"></span>&nbsp;
-                <span class="placeholder col-1"></span>&nbsp;
+                <span class="placeholder col-12"></span>&nbsp;
               </p>
               <div class="response-html" v-html="item.responseHtml" v-if="item.showHtml"></div>
               <div class="response-txt" v-if="!item.showHtml">{{ item.response }}</div>
               <div class="actions text-end" v-if="item.response">
+                <button class="btn btn-light btn-sm text-black-50"
+                  @click="textToSpeech(item.response)">TTS</button>
                 <button class="btn btn-light btn-sm text-black-50"
                   @click="copyToClipboard(item.response)">Copiar</button>
                 <button class="btn btn-light btn-sm text-black-50" v-if="item.showHtml"
@@ -121,7 +120,7 @@
 
     <div class="container-fluid">
       <div v-show="openai" class="mt-2">
-        <textarea class="form-control" placeholder="Tu pregunta" v-model="prompt" ref="prompt"></textarea>
+        <textarea class="form-control" placeholder="Tu pregunta" v-model="prompt" ref="prompt" v-if="!disableSendButton"></textarea>
         <button type="button" class="btn btn-primary form-control" :class="{'btn-light': disableSendButton}"
           @click="sendPrompt" :disabled="disableSendButton">Enviar</button>
       </div>
@@ -132,8 +131,8 @@
         }}</div>
     </div>
 
-    <div class="footer text-center">
-      <a href="https://github.com/akobashikawa/vue-chatgpt" target="_blank">@GitHub</a>
+    <div class="footer text-center mt-4">
+      2023 Vue ChatGPT <a href="https://github.com/akobashikawa/vue-chatgpt" target="_blank">@GitHub</a>
     </div>
 
     <div class="toast-container bottom-0 start-50 translate-middle-x">
@@ -267,7 +266,8 @@
               message: 'apiKey actualizado',
               model: this.model,
             };
-            this.setResultMessage(message);
+            // this.setResultMessage(message);
+            this.showToast(message);
             setTimeout(() => {
               this.$refs.prompt.focus();
             }, 500);
@@ -278,6 +278,7 @@
 
         async sendPrompt() {
           this.disableSendButton = true;
+          this.setResultMessage('');
 
           const newItem = {
             prompt: this.prompt,
@@ -315,9 +316,12 @@
             newItem.responseHtml = responseHtml;
 
             this.prompt = '';
-            this.$refs.prompt.focus();
-
             this.disableSendButton = false;
+
+            setTimeout(() => {
+              this.$refs.prompt.focus();
+            }, 500);
+
             this.highlightCode();
           } catch (error) {
             this.setResultError(error);
@@ -356,6 +360,12 @@
         setAuthorization(apiKey) {
           const authorization = `Bearer ${apiKey}`;
           axios.defaults.headers.common['Authorization'] = authorization;
+        },
+
+        textToSpeech(text) {
+          var speech = new SpeechSynthesisUtterance(text);
+          speech.lang = 'es-ES';
+          window.speechSynthesis.speak(speech);
         },
 
         async copyToClipboard(text) {
